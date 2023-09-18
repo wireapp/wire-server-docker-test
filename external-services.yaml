@@ -1,0 +1,269 @@
+version: '2.3'
+networks:
+  demo_wire:
+    external: false
+
+  redis:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+services:
+  fake_dynamodb:
+    container_name: demo_wire_dynamodb
+#    image: cnadiminti/dynamodb-local:2018-04-11
+    image: julialongtin/dynamodb_local:0.0.9
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - 127.0.0.1:4567:8000
+    networks:
+      - demo_wire
+
+  fake_sqs:
+    container_name: demo_wire_sqs
+#    image: airdock/fake-sqs:0.3.1
+    image: julialongtin/airdock_fakesqs:0.0.9
+    ports:
+      - 127.0.0.1:4568:4568
+    networks:
+      - demo_wire
+
+  fake_localstack:
+    container_name: demo_wire_localstack
+#    image: localstack/localstack:0.8.0  # NB: this is younger than 0.8.6!
+    image: julialongtin/localstack:0.0.9
+    ports:
+      - 127.0.0.1:4569:4579 # ses # needed for local integration tests
+      - 127.0.0.1:4575:4575 # sns
+    environment:
+      - DEBUG=1
+      - DEFAULT_REGION=eu-west-1
+      - SERVICES=ses,sns
+    networks:
+      - demo_wire
+
+  basic_smtp: # needed for demo setup
+    container_name: demo_wire_smtp
+#    image: namshi/smtp
+    image: julialongtin/smtp:0.0.9
+    ports:
+        - 127.0.0.1:2500:25
+    networks:
+      - demo_wire
+
+  fake_s3:
+    container_name: demo_wire_s3
+#    image: minio/minio:RELEASE.2018-05-25T19-49-13Z
+    image: julialongtin/minio:0.0.9
+    ports:
+     - "127.0.0.1:4570:9000"
+    environment:
+      MINIO_ACCESS_KEY: dummykey
+      MINIO_SECRET_KEY: dummysecret # minio requires a secret of at least 8 chars
+    command: server /tmp
+    networks:
+      - demo_wire
+
+  # activemq:
+  #   image: rmohr/activemq:5.15.4
+  #   ports:
+  #     - "61613:61613"
+
+  # FIXME: replace redis image with one we build.
+  redis:
+    container_name: demo_wire_redis
+    image: redis:3.0.7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - demo_wire
+
+  redis-cluster:
+    image: 'redis:6.0-alpine'
+    command: redis-cli --cluster create 172.20.0.31:6373 172.20.0.32:6374 172.20.0.33:6375 172.20.0.34:6376 172.20.0.35:6377 172.20.0.36:6378 --cluster-replicas 1 --cluster-yes
+    networks:
+      redis:
+        ipv4_address: 172.20.0.30
+    depends_on:
+      - redis-node-1
+      - redis-node-2
+      - redis-node-3
+      - redis-node-4
+      - redis-node-5
+      - redis-node-6
+  redis-node-1:
+    image: 'redis:6.0-alpine'
+    command: redis-server /usr/local/etc/redis/redis.conf
+    ports:
+      - '127.0.0.1:6373:6373'
+    volumes:
+      - redis-node-1-data:/var/lib/redis
+      - ./docker/redis-node-1.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      redis:
+        ipv4_address: 172.20.0.31
+  redis-node-2:
+    image: 'redis:6.0-alpine'
+    command: redis-server /usr/local/etc/redis/redis.conf
+    ports:
+      - '127.0.0.1:6374:6374'
+    volumes:
+      - redis-node-2-data:/var/lib/redis
+      - ./docker/redis-node-2.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      redis:
+        ipv4_address: 172.20.0.32
+  redis-node-3:
+    image: 'redis:6.0-alpine'
+    command: redis-server /usr/local/etc/redis/redis.conf
+    ports:
+      - '127.0.0.1:6375:6375'
+    volumes:
+      - redis-node-3-data:/var/lib/redis
+      - ./docker/redis-node-3.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      redis:
+        ipv4_address: 172.20.0.33
+  redis-node-4:
+    image: 'redis:6.0-alpine'
+    command: redis-server /usr/local/etc/redis/redis.conf
+    ports:
+      - '127.0.0.1:6376:6376'
+    volumes:
+      - redis-node-4-data:/var/lib/redis
+      - ./docker/redis-node-4.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      redis:
+        ipv4_address: 172.20.0.34
+  redis-node-5:
+    image: 'redis:6.0-alpine'
+    command: redis-server /usr/local/etc/redis/redis.conf
+    ports:
+      - '127.0.0.1:6377:6377'
+    volumes:
+      - redis-node-5-data:/var/lib/redis
+      - ./docker/redis-node-5.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      redis:
+        ipv4_address: 172.20.0.35
+  redis-node-6:
+    image: 'redis:6.0-alpine'
+    command: redis-server /usr/local/etc/redis/redis.conf
+    ports:
+      - '127.0.0.1:6378:6378'
+    volumes:
+      - redis-node-6-data:/var/lib/redis
+      - ./docker/redis-node-6.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      redis:
+        ipv4_address: 172.20.0.36
+
+  elasticsearch:
+    container_name: demo_wire_elasticsearch
+    #image: elasticsearch:5.6
+    image: julialongtin/elasticsearch:0.0.9-amd64
+    # https://hub.docker.com/_/elastic is deprecated, but 6.2.4 did not work without further changes.
+    # image: docker.elastic.co/elasticsearch/elasticsearch:6.2.4
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "127.0.0.1:9200:9200"
+      - "127.0.0.1:9300:9300"
+    environment:
+      - "bootstrap.system_call_filter=false"
+# ES_JVM_OPTIONS is reserved, so...
+# what's present in the jvm.options file by default.
+#      - "JVM_OPTIONS_ES=-Xmx2g -Xms2g"
+      - "JVM_OPTIONS_ES=-Xmx512m -Xms512m"
+      - "discovery.type=single-node"
+    networks:
+      - demo_wire
+
+  cassandra:
+    container_name: demo_wire_cassandra
+    #image: cassandra:3.11.2
+    image: julialongtin/cassandra:0.0.9
+    ports:
+      - "127.0.0.1:9042:9042"
+    ulimits:
+      memlock: 65536
+      nofile: 100000
+      nproc: 32768
+    environment:
+      - "CS_JVM_OPTIONS=-Xmx1024M -Xms1024M -Xmn200M"
+
+      # on nixos, you also may need to run
+      #   sysctl -w vm.max_map_count=1048576
+      # or add that to your `configuration.nix`
+    networks:
+      - demo_wire
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    ports:
+      - '127.0.0.1:5672:5672'
+      - '127.0.0.1:15672:15672'
+    networks:
+      - demo_wire
+
+  init_vhosts:
+    image: alpine/curl:3.14
+    environment:
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+    depends_on:
+      - rabbitmq
+    entrypoint: /scripts/init_vhosts.sh
+    volumes:
+      - ./:/scripts
+    networks:
+      - demo_wire
+
+  # FIXME: replace aws_cli with an image that we build.
+  aws_cli:
+    image: mesosphere/aws-cli:1.14.5
+    depends_on:
+      - fake_dynamodb
+      - fake_sqs
+      - fake_localstack
+      - fake_s3
+    links:
+      - fake_dynamodb:dynamodb
+      - fake_sqs:sqs
+      - fake_localstack:ses
+      - fake_localstack:sns
+      - fake_s3:s3
+    entrypoint: /scripts/init.sh
+    volumes:
+      - ./:/scripts
+    networks:
+      - demo_wire
+  coredns:
+    image: docker.io/coredns/coredns:1.8.4
+    volumes:
+      - ./coredns-config:/coredns-config
+    entrypoint:
+      - /coredns
+      - -conf
+      - /coredns-config/Corefile
+    ports:
+      - "9053:53"
+      - "9053:53/udp"
+
+volumes:
+  redis-node-1-data:
+  redis-node-2-data:
+  redis-node-3-data:
+  redis-node-4-data:
+  redis-node-5-data:
+  redis-node-6-data:

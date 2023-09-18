@@ -1,0 +1,150 @@
+version: '2.2'
+include:
+  - external-services.yaml
+
+services:
+
+  galley:
+    container_name: galley
+    image: quay.io/wire/galley:4.38.51
+    volumes:
+      - ./galley:/etc/wire/galley
+    networks:
+      - demo_wire
+    ports:
+      - '127.0.0.1:8085:8085'
+  
+  galley_schema:
+    container_name: galley-schema
+    image: quay.io/wire/galley-schema:4.38.51
+    command: --host cassandra --keyspace galley_test --replication-factor 1
+    networks:
+      - demo_wire
+
+  brig:
+    container_name: brig
+    image: quay.io/wire/brig:4.38.51
+    volumes:
+      - ./brig:/etc/wire/brig
+    networks:
+      - demo_wire
+    ports:
+      - '127.0.0.1:8082:8082'
+  
+  bring_index:
+    container_name: bring-index
+    image: quay.io/wire/brig-index:4.38.51
+    command: reset --elasticsearch-server http://elasticsearch:9200
+    networks:
+      - demo_wire
+  
+  brig_schema:
+    container_name: brig-schema
+    image: quay.io/wire/brig-schema:4.38.51
+    command: --host cassandra --keyspace brig_test --replication-factor 1
+    networks:
+      - demo_wire
+
+  background_worker:
+    container_name: background-worker
+    image: quay.io/wire/background-worker:4.38.51
+    volumes:
+      - ./background-worker:/etc/wire/background-worker/
+    networks:
+      - demo_wire
+    ports:
+      - '127.0.0.1:8089:8089'
+
+  cannon:
+    container_name: cannon
+    image: quay.io/wire/cannon:4.38.51
+    volumes:
+      - ./cannon:/etc/wire/cannon/
+    networks:
+      - demo_wire
+    ports:
+      - '127.0.0.1:8083:8083'
+
+  cargohold:
+    container_name: cargohold
+    image: quay.io/wire/cargohold:4.38.51
+    volumes:
+      - ./cargohold:/etc/wire/cargohold/
+    networks:
+      - demo_wire
+    ports:
+      - '127.0.0.1:8084:8084'
+  
+  federator:
+    container_name: federator
+    image: quay.io/wire/federator:4.38.51
+    volumes:
+      - ./federator:/etc/wire/federator/
+    networks:
+      - demo_wire
+    ports:
+      - '127.0.0.1:8097:8097'
+
+  gundeck:
+    container_name: gundeck
+    image: quay.io/wire/gundeck:4.38.51
+    volumes:
+      - ./gundeck:/etc/wire/gundeck/
+    networks:
+      - demo_wire
+    ports:
+      - '127.0.0.1:8086:8086'
+  
+  gundeck_schema:
+    container_name: gundeck-schema
+    image: quay.io/wire/gundeck-schema:4.38.51
+    command: --host cassandra --keyspace gundeck_test --replication-factor 1
+    networks:
+      - demo_wire
+  
+
+  proxy:
+    container_name: proxy
+    image: quay.io/wire/proxy:4.38.51
+    volumes:
+      - ./proxy:/etc/wire/proxy
+    networks:
+      - demo_wire
+    ports:
+      - '127.0.0.1:8087:8087'
+
+  spar:
+    container_name: spar
+    image: quay.io/wire/spar:4.38.51
+    volumes:
+      - ./spar:/etc/wire/spar
+    networks:
+      - demo_wire
+    ports:
+      - '127.0.0.1:8088:8088'
+
+  spar_schema:
+    container_name: spar-schema
+    image: quay.io/wire/spar-schema:4.38.51
+    command: --host cassandra --keyspace spar_test --replication-factor 1
+    networks:
+      - demo_wire
+    
+
+  stern:
+    container_name: stern
+    image: quay.io/wire/stern:4.38.51
+    volumes:
+      - ./stern:/etc/wire/stern
+    networks:
+      - demo_wire
+    ports:
+      - '127.0.0.1:8091:8091'
+
+
+#configs:
+#  galley_config:
+#    file: ./galley.yaml
+  # my_other_config:
+  #   external: true
+
